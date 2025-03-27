@@ -48,7 +48,20 @@ constructor(
                             date >= lastMonday -> DateAgo.LastWeek
                             else -> DateAgo.Other(date.withDayOfMonth(1))
                         }
-                    }.toSortedMap(
+                    }
+                    .mapValues { entry ->
+                        entry.value.mergeNearbyElements(
+                            key = { it.song.id },
+                            merge = { first, second ->
+                                first.copy(
+                                    event = first.event.copy(
+                                        playTime = first.event.playTime + second.event.playTime
+                                    )
+                                )
+                            }
+                        )
+                    }
+                    .toSortedMap(
                         compareBy { dateAgo ->
                             when (dateAgo) {
                                 DateAgo.Today -> 0L
@@ -57,21 +70,11 @@ constructor(
                                 DateAgo.LastWeek -> 3L
                                 is DateAgo.Other -> ChronoUnit.DAYS.between(dateAgo.date, today)
                             }
-                           }).mapValues { entry ->
-                              // merge neighbor songs with same id
-                              entry.value.mergeNearbyElements(
-                                  key = { it.song.id },
-                                  merge = { first, second ->
-                                      first.copy(
-                                          event = first.event.copy(
-                                              playTime = first.event.playTime + second.event.playTime
-                                          )
-                                      )
-                                  }
-                              )
-                          }
-                      }
-                      .stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+                        }
+                    )
+            }
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+
     init {
         viewModelScope.launch(Dispatchers.IO) {
             historyPage.value = YouTube.musicHistory().getOrNull()
