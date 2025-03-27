@@ -83,13 +83,13 @@ constructor(
 }
 
 sealed class DateAgo {
-    data object Today : DateAgo()
+    object Today : DateAgo()
 
-    data object Yesterday : DateAgo()
+    object Yesterday : DateAgo()
 
-    data object ThisWeek : DateAgo()
+    object ThisWeek : DateAgo()
 
-    data object LastWeek : DateAgo()
+    object LastWeek : DateAgo()
 
     class Other(
         val date: LocalDate,
