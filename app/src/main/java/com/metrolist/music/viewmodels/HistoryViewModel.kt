@@ -10,10 +10,7 @@ import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.extensions.mergeNearbyElements
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -33,11 +30,11 @@ constructor(
     val historyPage = mutableStateOf<HistoryPage?>(null)
     var historySource = MutableStateFlow(HistorySource.LOCAL)
 
-    val events =
-        database
-            .events()
-            .map { events ->
-                events
+    val events = database
+        .events()
+        .flatMapLatest { events ->
+            flow {
+                val groupedEvents = events
                     .groupBy {
                         val date = it.event.timestamp.toLocalDate()
                         val daysAgo = ChronoUnit.DAYS.between(date, today).toInt()
@@ -72,8 +69,11 @@ constructor(
                             }
                         }
                     )
+
+                emit(groupedEvents)
             }
-            .stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+        }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -83,13 +83,10 @@ constructor(
 }
 
 sealed class DateAgo {
-    object Today : DateAgo()
-
-    object Yesterday : DateAgo()
-
-    object ThisWeek : DateAgo()
-
-    object LastWeek : DateAgo()
+    data object Today : DateAgo()
+    data object Yesterday : DateAgo()
+    data object ThisWeek : DateAgo()
+    data object LastWeek : DateAgo()
 
     class Other(
         val date: LocalDate,
